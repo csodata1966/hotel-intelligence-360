@@ -1,0 +1,30 @@
+# Ambiente virtual
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Credenciais
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Dados locais
+data/warehouse/
+data/raw/
+data/processed/
+
+# Temporarios
+*.log
+*.tmp
+
+# Editor e sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
