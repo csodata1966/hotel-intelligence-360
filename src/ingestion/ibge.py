@@ -24,7 +24,15 @@ def obter_municipio(codigo_ibge: int, client: httpx.Client | None = None) -> Mun
         resposta.raise_for_status()
         return resposta.json()
     if client is None:
-        with httpx.Client(timeout=15, follow_redirects=True) as new_client:
+        with httpx.Client(
+            timeout=httpx.Timeout(
+                connect=30.0,
+                read=30.0,
+                write=10.0,
+                pool=10.0,
+            ),
+            follow_redirects=True,
+        ) as new_client:
             raw = fetch(new_client)
     else:
         raw = fetch(client)
