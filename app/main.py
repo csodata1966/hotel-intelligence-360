@@ -1,18 +1,74 @@
+
 """Aplicação inicial do Hotel Intelligence 360."""
+
+# ============================================================
+# CONFIGURAÇÃO DE CAMINHOS — STREAMLIT CLOUD E AMBIENTE LOCAL
+# ============================================================
+
+import sys
+from pathlib import Path
+
+# Identifica automaticamente a pasta raiz do projeto
+ROOT_DIR = Path(__file__).resolve().parent.parent
+
+# Adiciona a raiz ao caminho de importação do Python
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+
+# ============================================================
+# BIBLIOTECAS EXTERNAS
+# ============================================================
+
 import streamlit as st
 import httpx
 import pandas as pd
 import plotly.express as px
-from src.analytics_hotel import calcular_indicadores, calcular_cenarios, formatar_brl
-from pathlib import Path
-from src.storage.weather_store import salvar_coleta, consultar_gold, total_coletas
+
+
+# ============================================================
+# BIBLIOTECAS PADRÃO DO PYTHON
+# ============================================================
+
 from datetime import datetime, date, timedelta
+from zoneinfo import ZoneInfo
+
+
+# ============================================================
+# MÓDULOS INTERNOS — HOTEL INTELLIGENCE 360
+# ============================================================
+
+# Indicadores e simulação hoteleira
+from src.analytics_hotel import (
+    calcular_indicadores,
+    calcular_cenarios,
+    formatar_brl,
+)
+
+# Dados meteorológicos
+from src.ingestion.open_meteo import obter_previsao
+
+# Municípios do IBGE
+from src.ingestion.ibge import MUNICIPIOS, obter_municipio
+
+# Calendário de feriados
 from src.ingestion.brasilapi import obter_feriados
 from src.analytics_holidays import classificar_data
-from src.storage.holiday_store import salvar_feriados, consultar_feriados_gold, total_coletas_feriados
-from zoneinfo import ZoneInfo
-from src.ingestion.open_meteo import obter_previsao
-from src.ingestion.ibge import MUNICIPIOS, obter_municipio
+
+# Persistência meteorológica
+from src.storage.weather_store import (
+    salvar_coleta,
+    consultar_gold,
+    total_coletas,
+)
+
+# Persistência de feriados
+from src.storage.holiday_store import (
+    salvar_feriados,
+    consultar_feriados_gold,
+    total_coletas_feriados,
+)
+
 
 st.set_page_config(page_title="Hotel Intelligence 360", page_icon="🏨", layout="wide")
 st.title("Hotel Intelligence 360")
