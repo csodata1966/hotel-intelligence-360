@@ -1,5 +1,5 @@
 
-"""Aplicação inicial do Hotel Intelligence 360."""
+"""Hotel Intelligence 360 — Portfolio Edition v1.0.0."""
 
 # ============================================================
 # CONFIGURAÇÃO DE CAMINHOS — STREAMLIT CLOUD E AMBIENTE LOCAL
@@ -73,7 +73,7 @@ from src.storage.holiday_store import (
 
 st.set_page_config(page_title="Hotel Intelligence 360", page_icon="🏨", layout="wide")
 st.title("Hotel Intelligence 360")
-st.caption("MVP 0.6.2 — Painel Executivo | dados públicos oficiais + cenários hipotéticos")
+st.caption("v1.0.0 — Portfolio Edition | dados públicos + cenários hipotéticos")
 
 
 # ============================================================
@@ -113,7 +113,7 @@ st.sidebar.caption(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.caption("Hotel Intelligence 360 · 0.6.2 | Dados reais e simulações identificadas")
+st.sidebar.caption("Hotel Intelligence 360 · v1.0.0 | Dados públicos e simulações identificadas")
 aba_resumo, aba_clima, aba_calendario, aba_mercado, aba_simulador = st.tabs([
     "Visão executiva", "Clima e histórico", "Calendário", "Mercado regional", "Simulador"
 ])
@@ -361,23 +361,42 @@ with aba_resumo:
     q4.metric("Próxima data do calendário", proximas_datas[0].dia.strftime("%d/%m/%Y") if proximas_datas else "Indisponível")
     st.caption("Previsões meteorológicas: Open-Meteo; calendário: BrasilAPI. As datas podem não ser feriados municipais/estaduais.")
     st.markdown("#### Panorama econômico e demográfico")
+    from src.portfolio_summary import preparar_resumo_regional
     try:
         gold_resumo = consultar_mercado(warehouse)
-        if not gold_resumo.empty:
-            # As duas cidades são comparadas no mesmo indicador e ano, evitando misturar referências.
-            for chave, titulo in [("populacao_estimada", "População estimada"), ("pib_municipal", "PIB municipal")]:
-                fatia = gold_resumo[gold_resumo["indicador"] == chave] if "indicador" in gold_resumo.columns else pd.DataFrame()
-                if not fatia.empty:
-                    ultimo_ano = int(pd.to_numeric(fatia["ano"], errors="coerce").max())
-                    ano_df = fatia[pd.to_numeric(fatia["ano"], errors="coerce") == ultimo_ano]
-                    st.markdown(f"**{titulo} — ano de referência: {ultimo_ano}**")
-                    st.dataframe(ano_df, hide_index=True, use_container_width=True)
-                else:
-                    st.info(f"{titulo}: execute e salve primeiro a coleta na aba Inteligência de mercado.")
+    except (OSError, RuntimeError, ValueError, KeyError):
+        gold_resumo = pd.DataFrame()
+
+    for chave, titulo in [
+        ("populacao_estimada", "População estimada"),
+        ("pib_municipal", "PIB municipal"),
+    ]:
+        referencia = carregar_mercado(ROOT_DIR, chave)
+        tabela, proveniencia, coleta = preparar_resumo_regional(
+            gold_resumo,
+            chave,
+            referencia.registros if referencia else [],
+            referencia.coletado_em_utc if referencia else None,
+        )
+        if tabela.empty:
+            st.info(f"{titulo}: nenhum dado público de referência disponível.")
+            continue
+        ano = int(tabela["ano"].max())
+        st.markdown(f"**{titulo} — {ano}**")
+        st.caption(f"Origem: {proveniencia}. Última coleta: {coleta}.")
+        exibir = tabela[["municipio", "ano", "valor", "unidade", "fonte"]].copy()
+        if chave == "populacao_estimada":
+            exibir["valor"] = exibir["valor"].map(
+                lambda x: f"{x:,.0f}".replace(",", ".")
+            )
         else:
-            st.info("Não há histórico Gold persistido nesta instância. Há dados públicos anteriores disponíveis na aba Mercado regional se a API estiver indisponível.")
-    except (OSError, RuntimeError, ValueError, KeyError) as exc:
-        st.warning(f"Resumo regional indisponível ({type(exc).__name__}).")
+            # SIDRA 5938: PIB publicado em milhares de reais correntes.
+            exibir["valor"] = exibir["valor"].map(
+                lambda x: f"R$ {x / 1_000_000:,.2f} bi".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+            exibir["unidade"] = "bilhões de R$ correntes"
+        exibir.columns = ["Município", "Ano", "Valor", "Unidade", "Fonte"]
+        st.dataframe(exibir, hide_index=True, use_container_width=True)
     st.markdown("#### Interpretação gerencial")
     st.write("Compare o ambiente econômico das cidades, observe feriados e condições meteorológicas e use a aba Simulador para testar cenários. O painel não estima demanda nem prevê ocupação real.")
     st.caption("Proveniência: IBGE/SIDRA (anos específicos), Open-Meteo (previsão) e BrasilAPI (datas). Dados de coleta local podem estar desatualizados; consulte as abas específicas.")
