@@ -74,19 +74,42 @@ st.set_page_config(page_title="Hotel Intelligence 360", page_icon="🏨", layout
 st.title("Hotel Intelligence 360")
 st.caption("MVP 0.6.1 — Painel Executivo | dados públicos oficiais + cenários hipotéticos")
 
-@st.cache_data(ttl=86400, show_spinner=False)
-def municipio_cached(codigo: int):
-    return obter_municipio(codigo)
 
-nome = st.sidebar.selectbox("Município de referência", list(MUNICIPIOS))
-try:
-    m = municipio_cached(MUNICIPIOS[nome])
-    st.sidebar.success(f"IBGE: {m.nome} ({m.uf}) — {m.codigo_ibge}")
-    st.sidebar.caption(f"Região imediata: {m.regiao_imediata or chr(8212)}")
-except (httpx.HTTPError, ValueError, KeyError, TypeError) as exc:
-    st.sidebar.warning("IBGE indisponível no momento.")
-    st.sidebar.caption(f"Detalhe: {type(exc).__name__}")
+# ============================================================
+# SELEÇÃO DE MUNICÍPIO — METADADOS LOCAIS DO IBGE
+# ============================================================
 
+# Códigos oficiais e estáveis dos municípios
+# Não é necessária uma consulta HTTP para obter esses códigos.
+MUNICIPIOS_REFERENCIA = {
+    "Taubaté": {
+        "codigo": 3554102,
+        "uf": "SP",
+    },
+    "Tremembé": {
+        "codigo": 3554805,
+        "uf": "SP",
+    },
+}
+
+nome = st.sidebar.selectbox(
+    "Município de referência",
+    list(MUNICIPIOS_REFERENCIA.keys())
+)
+
+municipio = MUNICIPIOS_REFERENCIA[nome]
+
+st.sidebar.success(
+    f"Município: {nome} ({municipio['uf']})"
+)
+
+st.sidebar.caption(
+    f"Código IBGE: {municipio['codigo']}"
+)
+
+st.sidebar.caption(
+    "Identificação municipal: códigos oficiais do IBGE."
+)
 
 st.sidebar.markdown("---")
 st.sidebar.caption("Hotel Intelligence 360 · 0.6 | Dados reais e simulações identificadas")
