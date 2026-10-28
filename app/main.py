@@ -54,6 +54,7 @@ from src.ingestion.ibge import MUNICIPIOS, obter_municipio
 # Calendário de feriados
 from src.ingestion.brasilapi import obter_feriados
 from src.analytics_holidays import classificar_data
+from src.fallback_data import carregar_mercado, carregar_feriados
 
 # Persistência meteorológica
 from src.storage.weather_store import (
@@ -72,7 +73,7 @@ from src.storage.holiday_store import (
 
 st.set_page_config(page_title="Hotel Intelligence 360", page_icon="🏨", layout="wide")
 st.title("Hotel Intelligence 360")
-st.caption("MVP 0.6.1 — Painel Executivo | dados públicos oficiais + cenários hipotéticos")
+st.caption("MVP 0.6.2 — Painel Executivo | dados públicos oficiais + cenários hipotéticos")
 
 
 # ============================================================
@@ -112,7 +113,7 @@ st.sidebar.caption(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.caption("Hotel Intelligence 360 · 0.6 | Dados reais e simulações identificadas")
+st.sidebar.caption("Hotel Intelligence 360 · 0.6.2 | Dados reais e simulações identificadas")
 aba_resumo, aba_clima, aba_calendario, aba_mercado, aba_simulador = st.tabs([
     "Visão executiva", "Clima e histórico", "Calendário", "Mercado regional", "Simulador"
 ])
@@ -231,8 +232,14 @@ with aba_calendario:
                                persistidos.to_csv(index=False).encode('utf-8-sig'),
                                file_name=f"feriados_{ano_escolhido}.csv", mime="text/csv")
     except (httpx.HTTPError, ValueError, KeyError, TypeError, OSError, RuntimeError) as exc:
-        st.warning("Calendário indisponível: consulta à BrasilAPI falhou. O simulador continua operando.")
-        st.caption(f"Detalhe técnico: {type(exc).__name__}")
+        contingencia = carregar_feriados(ROOT_DIR, ano_escolhido)
+        if contingencia:
+            st.warning("BrasilAPI indisponível. Exibindo snapshot histórico de referência (não atualizado).")
+            st.caption(f"Fonte: BrasilAPI | Coleta original UTC: {contingencia.coletado_em_utc} | Falha: {type(exc).__name__}")
+            st.dataframe(pd.DataFrame(contingencia.registros), hide_index=True, use_container_width=True)
+        else:
+            st.warning("Calendário indisponível e sem snapshot histórico de referência para este ano.")
+            st.caption(f"Detalhe técnico: {type(exc).__name__}")
 
 with aba_mercado:
     st.subheader("Inteligência de mercado — IBGE/SIDRA")
@@ -263,8 +270,19 @@ with aba_mercado:
         else:
             st.info("A API não retornou valores válidos para o indicador e os municípios selecionados.")
     except (httpx.HTTPError,ValueError,TypeError,KeyError,OSError,RuntimeError) as erro:
-        st.warning("Indicadores regionais indisponíveis; os demais módulos continuam operando.")
-        st.caption(f"Detalhe técnico: {type(erro).__name__}")
+        contingencia = carregar_mercado(ROOT_DIR, indicador_selecionado)
+        if contingencia:
+            st.warning("SIDRA indisponível. Exibindo dados oficiais de uma coleta anterior, não atualizados.")
+            st.caption(f"Coleta original UTC: {contingencia.coletado_em_utc} | Fonte indicada no CSV: IBGE/SIDRA | Falha: {type(erro).__name__}")
+            df_fallback = pd.DataFrame(contingencia.registros)
+            st.dataframe(df_fallback, hide_index=True, use_container_width=True)
+            fig_fallback = px.line(df_fallback, x="ano", y="valor", color="municipio", markers=True,
+                                   title="Indicador regional — snapshot anterior")
+            fig_fallback.update_xaxes(type="category")
+            st.plotly_chart(fig_fallback, use_container_width=True)
+        else:
+            st.warning("Indicadores regionais indisponíveis e sem cópia de contingência.")
+            st.caption(f"Detalhe técnico: {type(erro).__name__}")
     try:
         historico_mercado=consultar_mercado(warehouse)
         if not historico_mercado.empty:
@@ -357,7 +375,7 @@ with aba_resumo:
                 else:
                     st.info(f"{titulo}: execute e salve primeiro a coleta na aba Inteligência de mercado.")
         else:
-            st.info("Salve os indicadores IBGE/SIDRA na aba Inteligência de mercado para exibir o resumo aqui.")
+            st.info("Não há histórico Gold persistido nesta instância. Há dados públicos anteriores disponíveis na aba Mercado regional se a API estiver indisponível.")
     except (OSError, RuntimeError, ValueError, KeyError) as exc:
         st.warning(f"Resumo regional indisponível ({type(exc).__name__}).")
     st.markdown("#### Interpretação gerencial")
