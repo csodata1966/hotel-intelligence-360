@@ -1,3 +1,46 @@
+# Hotel Intelligence 360 — MVP 0.6
+
+Plataforma demonstrativa de inteligência regional para gestores de hotéis e pousadas. Integra dados públicos reais de IBGE/SIDRA, Open-Meteo e BrasilAPI, com análise territorial, calendário e simulador **hipotético** de hospedagem.
+
+## Painel executivo
+
+Interface Streamlit organizada em cinco abas: Visão executiva, Clima e histórico, Calendário, Mercado regional e Simulador. A visão geral exibe clima, próxima data no calendário e os últimos indicadores **já persistidos** na camada Gold, com seus anos de referência.
+
+Não há dados reais de reservas, ocupação, ADR ou faturamento de hotéis; a receita e o RevPAR são apenas simulações matemáticas. Valores de PIB municipal têm unidades e anos próprios e não são ajustados automaticamente pela inflação.
+
+## Instalação
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m streamlit run app/main.py
+```
+
+## Arquitetura
+
+- **Ingestão:** APIs REST com HTTPX.
+- **Bronze:** snapshots JSON.
+- **Silver:** dados padronizados em Parquet.
+- **Gold:** consolidação SQL via DuckDB e Parquet.
+- **Apresentação:** Streamlit e Plotly.
+- **Testes:** pytest.
+
+Os arquivos `data/warehouse` são locais e não devem ser publicados no Git. Em hospedagem temporária, snapshots locais podem desaparecer após reinicializações. Os serviços públicos e a hospedagem gratuita possuem limites e termos próprios; o MVP destina-se a demonstração pessoal.
+
+## Fontes e documentação
+
+Ver `docs/api_sources.md`, `docs/architecture.md` e `docs/data_dictionary.md`. Crédito aos provedores originais é obrigatório conforme suas licenças.
+
+## Histórico
+
+- **v0.5.0:** primeiro marco Git, 30 testes aprovados localmente pelo mantenedor.
+- **v0.6.0 (candidato):** painel executivo e navegação por abas; requer validação local e CI antes da marcação da versão.
+
+---
+
+## Referência anterior do MVP 0.5
+
 # Hotel Intelligence 360
 
 Demonstração de engenharia de dados, Business Intelligence e simulação de indicadores hoteleiros, destinada ao portfólio [Universo Dados](https://universodados.com.br).
